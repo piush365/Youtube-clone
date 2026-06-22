@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { MoreVertical, X, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import axiosInstance from "@/lib/axiosinstance";
+import { getHistory, removeFromHistory } from "@/lib/historyService";
 import { useUser } from "@/lib/AuthContext";
 
 export default function HistoryContent() {
@@ -24,35 +23,25 @@ export default function HistoryContent() {
     if (user) {
       loadHistory();
     } else {
-      setLoading(true);
+      setLoading(false);
     }
   }, [user]);
 
   const loadHistory = async () => {
     if (!user) return;
-
     try {
-      const historyData = await axiosInstance.get(`/history/${user?._id}`);
-      setHistory(historyData.data);
+      const data = await getHistory(user.uid);
+      setHistory(data);
     } catch (error) {
       console.error("Error loading history:", error);
     } finally {
       setLoading(false);
     }
   };
+
   if (loading) {
     return <div>Loading history...</div>;
   }
-
-  const handleRemoveFromHistory = async (historyId: string) => {
-    try {
-      console.log("Removing from history:", historyId);
-
-      setHistory(history.filter((item) => item._id !== historyId));
-    } catch (error) {
-      console.error("Error removing from history:", error);
-    }
-  };
 
   if (!user) {
     return (
@@ -77,7 +66,21 @@ export default function HistoryContent() {
       </div>
     );
   }
-  const videos = "/video/vdo.mp4";
+
+  const handleRemoveFromHistory = async (historyId: string) => {
+    try {
+      await removeFromHistory(historyId);
+      setHistory(history.filter((item) => item.id !== historyId));
+    } catch (error) {
+      console.error("Error removing from history:", error);
+    }
+  };
+
+  const formatDate = (ts: any) =>
+    ts?.seconds
+      ? formatDistanceToNow(new Date(ts.seconds * 1000))
+      : formatDistanceToNow(new Date(ts));
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -86,18 +89,18 @@ export default function HistoryContent() {
 
       <div className="space-y-4">
         {history.map((item) => (
-          <div key={item._id} className="flex gap-4 group">
-            <Link href={`/watch/${item.videoid._id}`} className="flex-shrink-0">
+          <div key={item.id} className="flex gap-4 group">
+            <Link href={`/watch/${item.videoid.id}`} className="flex-shrink-0">
               <div className="relative w-40 aspect-video bg-gray-100 rounded overflow-hidden">
                 <video
-                  src={`${process.env.BACKEND_URL}/${item.videoid?.filepath}`}
+                  src={item.videoid?.videoUrl}
                   className="object-cover group-hover:scale-105 transition-transform duration-200"
                 />
               </div>
             </Link>
 
             <div className="flex-1 min-w-0">
-              <Link href={`/watch/${item.videoid._id}`}>
+              <Link href={`/watch/${item.videoid.id}`}>
                 <h3 className="font-medium text-sm line-clamp-2 group-hover:text-blue-600 mb-1">
                   {item.videoid.videotitle}
                 </h3>
@@ -106,11 +109,11 @@ export default function HistoryContent() {
                 {item.videoid.videochanel}
               </p>
               <p className="text-sm text-gray-600">
-                {item.videoid.views.toLocaleString()} views •{" "}
-                {formatDistanceToNow(new Date(item.videoid.createdAt))} ago
+                {item.videoid.views?.toLocaleString()} views •{" "}
+                {formatDate(item.videoid.createdAt)} ago
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                Added {formatDistanceToNow(new Date(item.createdAt))} ago
+                Watched {formatDate(item.createdAt)} ago
               </p>
             </div>
 
@@ -126,7 +129,7 @@ export default function HistoryContent() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => handleRemoveFromHistory(item._id)}
+                  onClick={() => handleRemoveFromHistory(item.id)}
                 >
                   <X className="w-4 h-4 mr-2" />
                   Remove from watch history

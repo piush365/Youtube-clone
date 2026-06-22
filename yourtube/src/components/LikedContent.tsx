@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { MoreVertical, X, ThumbsUp, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUser } from "@/lib/AuthContext";
-import axiosInstance from "@/lib/axiosinstance";
+import { getLikedVideos, toggleLike } from "@/lib/likeService";
 
 export default function LikedVideosContent() {
   const [likedVideos, setLikedVideos] = useState<any[]>([]);
@@ -23,16 +22,16 @@ export default function LikedVideosContent() {
   useEffect(() => {
     if (user) {
       loadLikedVideos();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
   const loadLikedVideos = async () => {
     if (!user) return;
-
     try {
-      const likedData = await axiosInstance.get(`/like/${user?._id}`);
-
-      setLikedVideos(likedData.data);
+      const data = await getLikedVideos(user.uid);
+      setLikedVideos(data);
     } catch (error) {
       console.error("Error loading liked videos:", error);
     } finally {
@@ -40,12 +39,11 @@ export default function LikedVideosContent() {
     }
   };
 
-  const handleUnlikeVideo = async (videoId: string, likedVideoId: string) => {
+  const handleUnlikeVideo = async (videoId: string, likeRecordId: string) => {
     if (!user) return;
-
     try {
-      console.log("Unliking video:", videoId, "for user:", user.id);
-      setLikedVideos(likedVideos.filter((item) => item._id !== likedVideoId));
+      await toggleLike(videoId, user.uid);
+      setLikedVideos(likedVideos.filter((item) => item.id !== likeRecordId));
     } catch (error) {
       console.error("Error unliking video:", error);
     }
@@ -76,7 +74,12 @@ export default function LikedVideosContent() {
       </div>
     );
   }
-  const videos = "/video/vdo.mp4";
+
+  const formatDate = (ts: any) =>
+    ts?.seconds
+      ? formatDistanceToNow(new Date(ts.seconds * 1000))
+      : formatDistanceToNow(new Date(ts));
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -89,18 +92,18 @@ export default function LikedVideosContent() {
 
       <div className="space-y-4">
         {likedVideos.map((item) => (
-          <div key={item._id} className="flex gap-4 group">
-            <Link href={`/watch/${item.videoid._id}`} className="flex-shrink-0">
+          <div key={item.id} className="flex gap-4 group">
+            <Link href={`/watch/${item.videoid.id}`} className="flex-shrink-0">
               <div className="relative w-40 aspect-video bg-gray-100 rounded overflow-hidden">
                 <video
-                  src={`${process.env.BACKEND_URL}/${item.videoid?.filepath}`}
+                  src={item.videoid?.videoUrl}
                   className="object-cover group-hover:scale-105 transition-transform duration-200"
                 />
               </div>
             </Link>
 
             <div className="flex-1 min-w-0">
-              <Link href={`/watch/${item.videoid._id}`}>
+              <Link href={`/watch/${item.videoid.id}`}>
                 <h3 className="font-medium text-sm line-clamp-2 group-hover:text-blue-600 mb-1">
                   {item.videoid.videotitle}
                 </h3>
@@ -109,11 +112,11 @@ export default function LikedVideosContent() {
                 {item.videoid.videochanel}
               </p>
               <p className="text-sm text-gray-600">
-                {item.videoid.views.toLocaleString()} views •{" "}
-                {formatDistanceToNow(new Date(item.videoid.createdAt))} ago
+                {item.videoid.views?.toLocaleString()} views •{" "}
+                {formatDate(item.videoid.createdAt)} ago
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                Liked {formatDistanceToNow(new Date(item.createdAt))} ago
+                Liked {formatDate(item.createdAt)} ago
               </p>
             </div>
 
@@ -129,7 +132,7 @@ export default function LikedVideosContent() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => handleUnlikeVideo(item.videoid._id, item._id)}
+                  onClick={() => handleUnlikeVideo(item.videoid.id, item.id)}
                 >
                   <X className="w-4 h-4 mr-2" />
                   Remove from liked videos

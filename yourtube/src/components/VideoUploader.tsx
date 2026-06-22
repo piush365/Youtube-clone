@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Progress } from "./ui/progress";
-import axiosInstance from "@/lib/axiosinstance";
+import { uploadVideo } from "@/lib/videoService";
 
 const VideoUploader = ({ channelId, channelName }: any) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -14,6 +14,7 @@ const VideoUploader = ({ channelId, channelName }: any) => {
   const [videoTitle, setVideoTitle] = useState("");
   const [uploadComplete, setUploadComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handlefilechange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -27,12 +28,12 @@ const VideoUploader = ({ channelId, channelName }: any) => {
         return;
       }
       setVideoFile(file);
-      const filename = file.name;
       if (!videoTitle) {
-        setVideoTitle(filename);
+        setVideoTitle(file.name);
       }
     }
   };
+
   const resetForm = () => {
     setVideoFile(null);
     setVideoTitle("");
@@ -43,38 +44,27 @@ const VideoUploader = ({ channelId, channelName }: any) => {
       fileInputRef.current.value = "";
     }
   };
-  const cancelUpload = () => {
-    if (isUploading) {
-      toast.error("Your video upload has been cancelled");
-    }
-  };
+
   const handleUpload = async () => {
     if (!videoFile || !videoTitle.trim()) {
       toast.error("Please provide file and title");
       return;
     }
-    const formdata = new FormData();
-    formdata.append("file", videoFile);
-    formdata.append("videotitle", videoTitle);
-    formdata.append("videochanel", channelName);
-    formdata.append("uploader", channelId);
-    console.log(formdata)
     try {
       setIsUploading(true);
       setUploadProgress(0);
-      const res = await axiosInstance.post("/video/upload", formdata, {
-         headers: {
-    "Content-Type": "multipart/form-data", // ✅ MUST for FormData
-  },
-        onUploadProgress: (progresEvent: any) => {
-          const progress = Math.round(
-            (progresEvent.loaded * 100) / progresEvent.total
-          );
-          setUploadProgress(progress);
+      await uploadVideo(
+        videoFile,
+        {
+          videotitle: videoTitle,
+          videochanel: channelName,
+          uploader: channelId,
         },
-      });
-      toast.success("Upload successfully");
-      resetForm();
+        (progress) => setUploadProgress(progress)
+      );
+      setUploadComplete(true);
+      toast.success("Upload successful!");
+      setTimeout(resetForm, 2000);
     } catch (error) {
       console.error("Error uploading video:", error);
       toast.error("There was an error uploading your video. Please try again.");
@@ -82,6 +72,7 @@ const VideoUploader = ({ channelId, channelName }: any) => {
       setIsUploading(false);
     }
   };
+
   return (
     <div className="bg-gray-50 rounded-lg p-6">
       <h2 className="text-xl font-semibold mb-4">Upload a video</h2>
@@ -122,8 +113,8 @@ const VideoUploader = ({ channelId, channelName }: any) => {
                   {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
                 </p>
               </div>
-              {!isUploading && (
-                <Button variant="ghost" size="icon" onClick={cancelUpload}>
+              {!isUploading && !uploadComplete && (
+                <Button variant="ghost" size="icon" onClick={resetForm}>
                   <X className="w-5 h-5" />
                 </Button>
               )}
@@ -161,14 +152,12 @@ const VideoUploader = ({ channelId, channelName }: any) => {
             <div className="flex justify-end gap-3">
               {!uploadComplete && (
                 <>
-                  <Button onClick={cancelUpload} disabled={uploadComplete}>
+                  <Button onClick={resetForm} disabled={isUploading}>
                     Cancel
                   </Button>
                   <Button
                     onClick={handleUpload}
-                    disabled={
-                      isUploading || !videoTitle.trim() || uploadComplete
-                    }
+                    disabled={isUploading || !videoTitle.trim()}
                   >
                     {isUploading ? "Uploading..." : "Upload"}
                   </Button>

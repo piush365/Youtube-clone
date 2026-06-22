@@ -11,23 +11,18 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
-import axiosInstance from "@/lib/axiosinstance";
+import { updateUser } from "@/lib/userService";
 import { useUser } from "@/lib/AuthContext";
 
 const Channeldialogue = ({ isopen, onclose, channeldata, mode }: any) => {
   const { user, login } = useUser();
-  // const user: any = {
-  //   id: "1",
-  //   name: "John Doe",
-  //   email: "john@example.com",
-  //   image: "https://github.com/shadcn.png?height=32&width=32",
-  // };
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     description: "",
   });
   const [isSubmitting, setisSubmitting] = useState(false);
+
   useEffect(() => {
     if (channeldata && mode === "edit") {
       setFormData({
@@ -41,30 +36,33 @@ const Channeldialogue = ({ isopen, onclose, channeldata, mode }: any) => {
       });
     }
   }, [channeldata]);
+
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
   const handlesubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const payload = {
-      channelname: formData.name,
-      description: formData.description,
-    };
-    const response = await axiosInstance.patch(
-      `/user/update/${user._id}`,
-      payload
-    );
-    login(response?.data);
-    router.push(`/channel/${user?._id}`);
-    setFormData({
-      name: "",
-      description: "",
-    });
-    onclose();
+    setisSubmitting(true);
+    try {
+      const updated = await updateUser(user.uid, {
+        channelname: formData.name,
+        description: formData.description,
+      });
+      login(updated);
+      router.push(`/channel/${user?.uid}`);
+      setFormData({ name: "", description: "" });
+      onclose();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setisSubmitting(false);
+    }
   };
+
   return (
     <Dialog open={isopen} onOpenChange={onclose}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
@@ -75,7 +73,6 @@ const Channeldialogue = ({ isopen, onclose, channeldata, mode }: any) => {
         </DialogHeader>
 
         <form onSubmit={handlesubmit} className="space-y-6">
-          {/* Channel Name */}
           <div className="space-y-2">
             <Label htmlFor="name">Channel Name</Label>
             <Input
@@ -85,7 +82,6 @@ const Channeldialogue = ({ isopen, onclose, channeldata, mode }: any) => {
               onChange={handleChange}
             />
           </div>
-          {/* Channel Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Channel Description</Label>
             <Textarea
