@@ -1,9 +1,12 @@
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
-import { useState } from "react";
-import { createContext } from "react";
+import {
+  onAuthStateChanged,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+} from "firebase/auth";
+import { useState, useEffect, useContext, createContext } from "react";
 import { provider, auth } from "./firebase";
-import axiosInstance from "./axiosinstance";
-import { useEffect, useContext } from "react";
+import { getOrCreateUser } from "./userService";
 
 const UserContext = createContext();
 
@@ -14,6 +17,7 @@ export const UserProvider = ({ children }) => {
     setUser(userdata);
     localStorage.setItem("user", JSON.stringify(userdata));
   };
+
   const logout = async () => {
     setUser(null);
     localStorage.removeItem("user");
@@ -23,39 +27,47 @@ export const UserProvider = ({ children }) => {
       console.error("Error during sign out:", error);
     }
   };
+
   const handlegooglesignin = async () => {
     try {
-      const result = await signInWithPopup(auth, provider);
-      const firebaseuser = result.user;
-      const payload = {
-        email: firebaseuser.email,
-        name: firebaseuser.displayName,
-        image: firebaseuser.photoURL || "https://github.com/shadcn.png",
-      };
-      const response = await axiosInstance.post("/user/login", payload);
-      login(response.data.result);
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error(error);
     }
   };
+
   useEffect(() => {
-    const unsubcribe = onAuthStateChanged(auth, async (firebaseuser) => {
-      if (firebaseuser) {
+    // Handle the result after redirect returns
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) {
+          const firebaseUser = result.user;
+          const userData = await getOrCreateUser(firebaseUser.uid, {
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            image: firebaseUser.photoURL || "https://github.com/shadcn.png",
+          });
+          login(userData);
+        }
+      })
+      .catch(console.error);
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
         try {
-          const payload = {
-            email: firebaseuser.email,
-            name: firebaseuser.displayName,
-            image: firebaseuser.photoURL || "https://github.com/shadcn.png",
-          };
-          const response = await axiosInstance.post("/user/login", payload);
-          login(response.data.result);
+          const userData = await getOrCreateUser(firebaseUser.uid, {
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            image: firebaseUser.photoURL || "https://github.com/shadcn.png",
+          });
+          login(userData);
         } catch (error) {
           console.error(error);
           logout();
         }
       }
     });
-    return () => unsubcribe();
+    return () => unsubscribe();
   }, []);
 
   return (

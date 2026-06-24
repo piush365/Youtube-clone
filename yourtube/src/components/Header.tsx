@@ -101,7 +101,7 @@ const Header = () => {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 {user?.channelname ? (
                   <DropdownMenuItem asChild>
-                    <Link href={`/channel/${user?._id}`}>Your channel</Link>
+                    <Link href={`/channel/${user?.uid}`}>Your channel</Link>
                   </DropdownMenuItem>
                 ) : (
                   <div className="px-2 py-1.5">

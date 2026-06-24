@@ -11,106 +11,67 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useUser } from "@/lib/AuthContext";
-import axiosInstance from "@/lib/axiosinstance";
+import { toggleLike, checkLiked } from "@/lib/likeService";
+import { addToHistory, } from "@/lib/historyService";
+import { toggleWatchLater } from "@/lib/watchlaterService";
+import { incrementViews } from "@/lib/videoService";
 
 const VideoInfo = ({ video }: any) => {
-  const [likes, setlikes] = useState(video.Like || 0);
-  const [dislikes, setDislikes] = useState(video.Dislike || 0);
+  const [likes, setlikes] = useState(video.likes || 0);
   const [isLiked, setIsLiked] = useState(false);
-  const [isDisliked, setIsDisliked] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const { user } = useUser();
   const [isWatchLater, setIsWatchLater] = useState(false);
 
-  // const user: any = {
-  //   id: "1",
-  //   name: "John Doe",
-  //   email: "john@example.com",
-  //   image: "https://github.com/shadcn.png?height=32&width=32",
-  // };
   useEffect(() => {
-    setlikes(video.Like || 0);
-    setDislikes(video.Dislike || 0);
+    setlikes(video.likes || 0);
     setIsLiked(false);
-    setIsDisliked(false);
   }, [video]);
 
   useEffect(() => {
-    const handleviews = async () => {
-      if (user) {
-        try {
-          return await axiosInstance.post(`/history/${video._id}`, {
-            userId: user?._id,
-          });
-        } catch (error) {
-          return console.log(error);
+    const handleViews = async () => {
+      try {
+        await incrementViews(video.id);
+        if (user) {
+          await addToHistory(video.id, user.uid);
         }
-      } else {
-        return await axiosInstance.post(`/history/views/${video?._id}`);
+      } catch (error) {
+        console.log(error);
       }
     };
-    handleviews();
-  }, [user]);
+    handleViews();
+  }, [video.id, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    checkLiked(video.id, user.uid).then(setIsLiked);
+  }, [video.id, user]);
+
   const handleLike = async () => {
     if (!user) return;
     try {
-      const res = await axiosInstance.post(`/like/${video._id}`, {
-        userId: user?._id,
-      });
-      if (res.data.liked) {
-        if (isLiked) {
-          setlikes((prev: any) => prev - 1);
-          setIsLiked(false);
-        } else {
-          setlikes((prev: any) => prev + 1);
-          setIsLiked(true);
-          if (isDisliked) {
-            setDislikes((prev: any) => prev - 1);
-            setIsDisliked(false);
-          }
-        }
-      }
+      const liked = await toggleLike(video.id, user.uid);
+      setIsLiked(liked);
+      setlikes((prev: number) => (liked ? prev + 1 : prev - 1));
     } catch (error) {
       console.log(error);
     }
   };
+
   const handleWatchLater = async () => {
-    try {
-      const res = await axiosInstance.post(`/watch/${video._id}`, {
-        userId: user?._id,
-      });
-      if (res.data.watchlater) {
-        setIsWatchLater(!isWatchLater);
-      } else {
-        setIsWatchLater(false);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  const handleDislike = async () => {
     if (!user) return;
     try {
-      const res = await axiosInstance.post(`/like/${video._id}`, {
-        userId: user?._id,
-      });
-      if (!res.data.liked) {
-        if (isDisliked) {
-          setDislikes((prev: any) => prev - 1);
-          setIsDisliked(false);
-        } else {
-          setDislikes((prev: any) => prev + 1);
-          setIsDisliked(true);
-          if (isLiked) {
-            setlikes((prev: any) => prev - 1);
-            setIsLiked(false);
-          }
-        }
-      }
+      const added = await toggleWatchLater(video.id, user.uid);
+      setIsWatchLater(added);
     } catch (error) {
       console.log(error);
     }
   };
+
+  const createdAt = video.createdAt?.seconds
+    ? new Date(video.createdAt.seconds * 1000)
+    : new Date(video.createdAt);
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">{video.videotitle}</h1>
@@ -118,7 +79,7 @@ const VideoInfo = ({ video }: any) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Avatar className="w-10 h-10">
-            <AvatarFallback>{video.videochanel[0]}</AvatarFallback>
+            <AvatarFallback>{video.videochanel?.[0]}</AvatarFallback>
           </Avatar>
           <div>
             <h3 className="font-medium">{video.videochanel}</h3>
@@ -140,20 +101,6 @@ const VideoInfo = ({ video }: any) => {
                 }`}
               />
               {likes.toLocaleString()}
-            </Button>
-            <div className="w-px h-6 bg-gray-300" />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-r-full"
-              onClick={handleDislike}
-            >
-              <ThumbsDown
-                className={`w-5 h-5 mr-2 ${
-                  isDisliked ? "fill-black text-black" : ""
-                }`}
-              />
-              {dislikes.toLocaleString()}
             </Button>
           </div>
           <Button
@@ -194,8 +141,8 @@ const VideoInfo = ({ video }: any) => {
       </div>
       <div className="bg-gray-100 rounded-lg p-4">
         <div className="flex gap-4 text-sm font-medium mb-2">
-          <span>{video.views.toLocaleString()} views</span>
-          <span>{formatDistanceToNow(new Date(video.createdAt))} ago</span>
+          <span>{video.views?.toLocaleString()} views</span>
+          <span>{formatDistanceToNow(createdAt)} ago</span>
         </div>
         <div className={`text-sm ${showFullDescription ? "" : "line-clamp-3"}`}>
           <p>
