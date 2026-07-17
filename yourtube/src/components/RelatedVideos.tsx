@@ -26,7 +26,7 @@ export default function RelatedVideos({ videos }: RelatedVideosProps) {
           href={`/watch/${video.id}`}
           className="flex gap-2 group"
         >
-          <div className="relative w-40 aspect-video bg-gray-100 rounded overflow-hidden flex-shrink-0">
+          <div className="relative w-40 aspect-video bg-secondary rounded overflow-hidden flex-shrink-0">
             <video
               src={video.videoUrl}
               className="object-cover group-hover:scale-105 transition-transform duration-200"
@@ -36,8 +36,8 @@ export default function RelatedVideos({ videos }: RelatedVideosProps) {
             <h3 className="font-medium text-sm line-clamp-2 group-hover:text-blue-600">
               {video.videotitle}
             </h3>
-            <p className="text-xs text-gray-600 mt-1">{video.videochanel}</p>
-            <p className="text-xs text-gray-600">
+            <p className="text-xs text-muted-foreground mt-1">{video.videochanel}</p>
+            <p className="text-xs text-muted-foreground">
               {video.views?.toLocaleString()} views •{" "}
               {formatDate(video.createdAt)} ago
             </p>

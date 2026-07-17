@@ -40,12 +40,28 @@ const WatchPage = () => {
     return <div>Video not found</div>;
   }
 
+  const handleNext = () => {
+    if (allVideos.length > 0) {
+      router.push(`/watch/${allVideos[0].id}`);
+    }
+  };
+
+  const handleOpenComments = () => {
+    document
+      .getElementById("comments-section")
+      ?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
-            <Videopplayer video={video} />
+            <Videopplayer
+              video={video}
+              onNext={handleNext}
+              onOpenComments={handleOpenComments}
+            />
             <VideoInfo video={video} />
             <Comments videoId={id as string} />
           </div>

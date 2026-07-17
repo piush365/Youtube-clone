@@ -6,15 +6,21 @@ import {
   Download,
   MoreHorizontal,
   Share,
-  ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 import { useUser } from "@/lib/AuthContext";
 import { toggleLike, checkLiked } from "@/lib/likeService";
-import { addToHistory, } from "@/lib/historyService";
+import { addToHistory } from "@/lib/historyService";
 import { toggleWatchLater } from "@/lib/watchlaterService";
 import { incrementViews } from "@/lib/videoService";
+import {
+  downloadVideoFile,
+  getTodayDownloadCount,
+  recordDownload,
+} from "@/lib/downloadService";
+import PremiumDialog from "./PremiumDialog";
 
 const VideoInfo = ({ video }: any) => {
   const [likes, setlikes] = useState(video.likes || 0);
@@ -22,6 +28,8 @@ const VideoInfo = ({ video }: any) => {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const { user } = useUser();
   const [isWatchLater, setIsWatchLater] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [premiumOpen, setPremiumOpen] = useState(false);
 
   useEffect(() => {
     setlikes(video.likes || 0);
@@ -68,6 +76,47 @@ const VideoInfo = ({ video }: any) => {
     }
   };
 
+  const handleDownload = async () => {
+    if (!user) {
+      toast.error("Sign in to download videos");
+      return;
+    }
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      // Free plan: 1 download per day. Premium: unlimited.
+      if (!user.premiumDownloads) {
+        const todayCount = await getTodayDownloadCount(user.uid);
+        if (todayCount >= 1) {
+          setPremiumOpen(true);
+          return;
+        }
+      }
+      toast.info("Preparing your download...");
+      await downloadVideoFile(video.videoUrl, video.videotitle || "video");
+      await recordDownload(user.uid, {
+        id: video.id,
+        videotitle: video.videotitle,
+        videoUrl: video.videoUrl,
+      });
+      toast.success("Video downloaded — see it in your Downloads section");
+    } catch (e) {
+      console.error(e);
+      toast.error("Download failed, please try again");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copied to clipboard");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
+
   const createdAt = video.createdAt?.seconds
     ? new Date(video.createdAt.seconds * 1000)
     : new Date(video.createdAt);
@@ -76,19 +125,19 @@ const VideoInfo = ({ video }: any) => {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">{video.videotitle}</h1>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4">
           <Avatar className="w-10 h-10">
             <AvatarFallback>{video.videochanel?.[0]}</AvatarFallback>
           </Avatar>
           <div>
             <h3 className="font-medium">{video.videochanel}</h3>
-            <p className="text-sm text-gray-600">1.2M subscribers</p>
+            <p className="text-sm text-muted-foreground">1.2M subscribers</p>
           </div>
           <Button className="ml-4">Subscribe</Button>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-gray-100 rounded-full">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center bg-secondary rounded-full">
             <Button
               variant="ghost"
               size="sm"
@@ -96,9 +145,7 @@ const VideoInfo = ({ video }: any) => {
               onClick={handleLike}
             >
               <ThumbsUp
-                className={`w-5 h-5 mr-2 ${
-                  isLiked ? "fill-black text-black" : ""
-                }`}
+                className={`w-5 h-5 mr-2 ${isLiked ? "fill-current" : ""}`}
               />
               {likes.toLocaleString()}
             </Button>
@@ -106,7 +153,7 @@ const VideoInfo = ({ video }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className={`bg-gray-100 rounded-full ${
+            className={`bg-secondary rounded-full ${
               isWatchLater ? "text-primary" : ""
             }`}
             onClick={handleWatchLater}
@@ -117,7 +164,8 @@ const VideoInfo = ({ video }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className="bg-gray-100 rounded-full"
+            className="bg-secondary rounded-full"
+            onClick={handleShare}
           >
             <Share className="w-5 h-5 mr-2" />
             Share
@@ -125,21 +173,23 @@ const VideoInfo = ({ video }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className="bg-gray-100 rounded-full"
+            className="bg-secondary rounded-full"
+            onClick={handleDownload}
+            disabled={downloading}
           >
             <Download className="w-5 h-5 mr-2" />
-            Download
+            {downloading ? "Downloading..." : "Download"}
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="bg-gray-100 rounded-full"
+            className="bg-secondary rounded-full"
           >
             <MoreHorizontal className="w-5 h-5" />
           </Button>
         </div>
       </div>
-      <div className="bg-gray-100 rounded-lg p-4">
+      <div className="bg-secondary rounded-lg p-4">
         <div className="flex gap-4 text-sm font-medium mb-2">
           <span>{video.views?.toLocaleString()} views</span>
           <span>{formatDistanceToNow(createdAt)} ago</span>
@@ -159,6 +209,10 @@ const VideoInfo = ({ video }: any) => {
           {showFullDescription ? "Show less" : "Show more"}
         </Button>
       </div>
+      <PremiumDialog
+        open={premiumOpen}
+        onClose={() => setPremiumOpen(false)}
+      />
     </div>
   );
 };

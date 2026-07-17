@@ -10,8 +10,12 @@ import { getOrCreateUser } from "./userService";
 
 const UserContext = createContext();
 
+const otpKey = (uid) => `otp_verified_${uid}`;
+
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  // Signed in with Google but OTP verification still pending
+  const [pendingUser, setPendingUser] = useState(null);
 
   const login = (userdata) => {
     setUser(userdata);
@@ -20,6 +24,7 @@ export const UserProvider = ({ children }) => {
 
   const logout = async () => {
     setUser(null);
+    setPendingUser(null);
     localStorage.removeItem("user");
     try {
       await signOut(auth);
@@ -36,6 +41,27 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  // Region-based OTP: hold the user in "pending" until OTP is verified once
+  // per browser session.
+  const handleAuthedUser = (userData) => {
+    if (sessionStorage.getItem(otpKey(userData.uid))) {
+      login(userData);
+    } else {
+      setPendingUser(userData);
+    }
+  };
+
+  const completeOtpVerification = () => {
+    if (!pendingUser) return;
+    sessionStorage.setItem(otpKey(pendingUser.uid), "1");
+    login(pendingUser);
+    setPendingUser(null);
+  };
+
+  const cancelOtpVerification = () => {
+    logout();
+  };
+
   useEffect(() => {
     // Handle the result after redirect returns
     getRedirectResult(auth)
@@ -47,7 +73,7 @@ export const UserProvider = ({ children }) => {
             name: firebaseUser.displayName,
             image: firebaseUser.photoURL || "https://github.com/shadcn.png",
           });
-          login(userData);
+          handleAuthedUser(userData);
         }
       })
       .catch(console.error);
@@ -60,7 +86,7 @@ export const UserProvider = ({ children }) => {
             name: firebaseUser.displayName,
             image: firebaseUser.photoURL || "https://github.com/shadcn.png",
           });
-          login(userData);
+          handleAuthedUser(userData);
         } catch (error) {
           console.error(error);
           logout();
@@ -71,7 +97,17 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, login, logout, handlegooglesignin }}>
+    <UserContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        handlegooglesignin,
+        pendingUser,
+        completeOtpVerification,
+        cancelOtpVerification,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

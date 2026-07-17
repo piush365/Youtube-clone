@@ -38,7 +38,7 @@ const Header = () => {
     }
   };
   return (
-    <header className="flex items-center justify-between px-4 py-2 bg-white border-b">
+    <header className="flex items-center justify-between px-4 py-2 bg-background border-b sticky top-0 z-40">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon">
           <Menu className="w-6 h-6" />
@@ -50,12 +50,12 @@ const Header = () => {
             </svg>
           </div>
           <span className="text-xl font-medium">YourTube</span>
-          <span className="text-xs text-gray-400 ml-1">IN</span>
+          <span className="text-xs text-muted-foreground ml-1">IN</span>
         </Link>
       </div>
       <form
         onSubmit={handleSearch}
-        className="flex items-center gap-2 flex-1 max-w-2xl mx-4"
+        className="hidden sm:flex items-center gap-2 flex-1 max-w-2xl mx-4"
       >
         <div className="flex flex-1">
           <Input
@@ -68,7 +68,7 @@ const Header = () => {
           />
           <Button
             type="submit"
-            className="rounded-r-full px-6 bg-gray-50 hover:bg-gray-100 text-gray-600 border border-l-0"
+            className="rounded-r-full px-6 bg-secondary hover:bg-secondary text-muted-foreground border border-l-0"
           >
             <Search className="w-5 h-5" />
           </Button>
@@ -123,6 +123,15 @@ const Header = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/watch-later">Watch later</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/downloads">Downloads</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/plans">Upgrade plan</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/call">Video call</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>Sign out</DropdownMenuItem>
