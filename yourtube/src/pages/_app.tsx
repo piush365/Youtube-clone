@@ -3,6 +3,8 @@ import Sidebar from "@/components/Sidebar";
 import OtpGate from "@/components/OtpGate";
 import TestOverrideBadge from "@/components/TestOverrideBadge";
 import ThemeController from "@/components/ThemeController";
+import IncomingCallListener from "@/components/call/IncomingCallListener";
+import PresenceHeartbeat from "@/components/call/PresenceHeartbeat";
 import { Toaster } from "@/components/ui/sonner";
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
@@ -29,6 +31,8 @@ export default function App({ Component, pageProps }: AppProps) {
           </div>
         </div>
         <OtpGate />
+        <IncomingCallListener />
+        <PresenceHeartbeat />
         <TestOverrideBadge />
       </UserProvider>
     </ThemeProvider>
