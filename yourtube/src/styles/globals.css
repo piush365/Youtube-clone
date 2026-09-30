@@ -124,3 +124,21 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Video player gesture feedback */
+@keyframes yt-ripple {
+  0% { opacity: 0; transform: scale(0.8); }
+  20% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+@keyframes yt-flash {
+  0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.8); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); }
+}
+@keyframes yt-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-yt-ripple { animation: yt-ripple 650ms ease-out forwards; }
+.animate-yt-flash { animation: yt-flash 550ms ease-out forwards; }
+.animate-yt-sheet-up { animation: yt-sheet-up 220ms ease-out; }

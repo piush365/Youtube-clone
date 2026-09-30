@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronDown, Languages, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ChevronDown, Languages, MessageSquare, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Textarea } from "./ui/textarea";
@@ -26,6 +26,8 @@ import { validateCommentText } from "@/lib/commentText";
 import type { ReactionType } from "@/lib/commentReactions";
 import { TRANSLATE_LANGUAGES, isTranslateLanguage, type TranslateLanguage } from "@/lib/languages";
 import type { CommentDTO } from "@/lib/types";
+import { OPEN_COMMENTS_EVENT } from "@/lib/uiEvents";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 
 const LANG_STORAGE_KEY = "yourtube:translate-lang";
 
@@ -266,8 +268,39 @@ const Comments = ({ videoId }: CommentsProps) => {
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<TranslateLanguage>("en");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  // Phones get a collapsed summary that opens as a bottom sheet.
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => setLang(loadLang()), []);
+
+  // Left triple-tap on the player: bring the comments into view and focus the input.
+  useEffect(() => {
+    const open = () => {
+      if (isMobile) {
+        setSheetOpen(true);
+      } else {
+        sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      if (!user) toast.info("Sign in to add a comment");
+      // After the sheet mounts / the smooth scroll starts.
+      setTimeout(() => inputRef.current?.focus({ preventScroll: !isMobile }), isMobile ? 250 : 450);
+    };
+    window.addEventListener(OPEN_COMMENTS_EVENT, open);
+    return () => window.removeEventListener(OPEN_COMMENTS_EVENT, open);
+  }, [isMobile, user]);
+
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSheetOpen(false);
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [sheetOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -310,10 +343,10 @@ const Comments = ({ videoId }: CommentsProps) => {
   );
   const removeOne = useCallback((id: string) => setComments((prev) => prev.filter((c) => c.id !== id)), []);
 
-  return (
-    <section id="comments" className="space-y-6 scroll-mt-20" data-testid="comments">
-      <h2 className="text-xl font-semibold">{loading ? "Comments" : `${comments.length} Comments`}</h2>
+  const heading = loading ? "Comments" : `${comments.length} Comments`;
 
+  const body = (
+    <>
       {user ? (
         <div className="flex gap-4">
           <Avatar className="w-10 h-10">
@@ -364,6 +397,52 @@ const Comments = ({ videoId }: CommentsProps) => {
           ))
         )}
       </div>
+    </>
+  );
+
+  if (isMobile) {
+    const first = comments[0];
+    return (
+      <section id="comments" ref={sectionRef} className="scroll-mt-20" data-testid="comments">
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          className="w-full rounded-xl bg-secondary p-3 text-left"
+          data-testid="comments-summary"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <MessageSquare className="w-4 h-4" /> {heading}
+          </span>
+          <span className="mt-1 block truncate text-sm text-muted-foreground">
+            {first ? `${first.usercommented}: ${first.commentbody}` : "Tap to add a comment"}
+          </span>
+        </button>
+        {sheetOpen && (
+          <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Comments">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setSheetOpen(false)} />
+            <div
+              className="absolute inset-x-0 bottom-0 flex h-[80vh] flex-col rounded-t-2xl border-t bg-background shadow-2xl animate-yt-sheet-up"
+              data-testid="comments-sheet"
+            >
+              <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-muted-foreground/40" />
+              <div className="flex items-center justify-between px-4 py-2">
+                <h2 className="text-lg font-semibold">{heading}</h2>
+                <Button variant="ghost" size="icon" onClick={() => setSheetOpen(false)} aria-label="Close comments">
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <div className="flex-1 space-y-6 overflow-y-auto px-4 pb-6">{body}</div>
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section id="comments" ref={sectionRef} className="space-y-6 scroll-mt-20" data-testid="comments">
+      <h2 className="text-xl font-semibold">{heading}</h2>
+      {body}
     </section>
   );
 };
