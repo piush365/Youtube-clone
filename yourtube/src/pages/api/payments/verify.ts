@@ -1,5 +1,7 @@
+import { waitUntil } from "@vercel/functions";
 import { adminDb } from "@/lib/server/firebaseAdmin";
 import { HttpError, requireString } from "@/lib/server/http";
+import { sendInvoiceEmail } from "@/lib/server/invoice";
 import { fulfilPayment } from "@/lib/server/payments";
 import { verifyPaymentSignature } from "@/lib/server/razorpay";
 import { withAuth } from "@/lib/server/withAuth";
@@ -19,11 +21,17 @@ export default withAuth(["POST"], async (req, res) => {
   if (order.get("uid") !== req.user.uid) throw new HttpError(403, { error: "This order belongs to another account" });
 
   const { created, payment } = await fulfilPayment({ orderId, paymentId, source: "verify" });
+  // Only the request that fulfilled the payment sends the invoice. Gmail SMTP
+  // takes several seconds, so reply now and let waitUntil keep the function
+  // alive until the send finishes; the outcome lands on payments/{id}.emailStatus.
+  if (created) waitUntil(sendInvoiceEmail(paymentId));
+  const emailStatus = payment.emailStatus;
 
   res.status(200).json({
     ok: true,
     alreadyProcessed: !created,
     product: payment.product,
     invoiceNumber: payment.invoiceNumber,
+    emailStatus,
   });
 });

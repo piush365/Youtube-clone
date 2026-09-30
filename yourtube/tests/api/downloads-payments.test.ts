@@ -1,4 +1,6 @@
 import crypto from "crypto";
+import { mkdtempSync, readdirSync, readFileSync } from "fs";
+import os from "os";
 import path from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { adminDb, api, createUser, startServer, stopServer, type TestUser } from "./harness";
@@ -13,10 +15,35 @@ const hasRazorpay = !!process.env.RAZORPAY_KEY_ID?.startsWith("rzp_test_") && !!
 const hmac = (data: string, secret: string) => crypto.createHmac("sha256", secret).update(data).digest("hex");
 const fakePaymentId = () => `pay_T${crypto.randomBytes(7).toString("hex").toUpperCase()}`;
 
+// Invoice emails are written here instead of being sent.
+const MAIL_DIR = mkdtempSync(path.join(os.tmpdir(), "yourtube-mail-"));
+interface CapturedMail {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  attachments: string[];
+}
+const mailsTo = (email: string): CapturedMail[] =>
+  readdirSync(MAIL_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => JSON.parse(readFileSync(path.join(MAIL_DIR, f), "utf8")) as CapturedMail)
+    .filter((m) => m.to === email);
+
+/** Invoice email runs in the background after verify replies. */
+async function waitForEmailStatus(paymentId: string, want: string) {
+  for (let i = 0; i < 60; i++) {
+    const status = (await adminDb().doc(`payments/${paymentId}`).get()).get("emailStatus");
+    if (status === want) return;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`emailStatus never became ${want}`);
+}
+
 const CLOUD_URL = (n: number) => `https://res.cloudinary.com/demo/video/upload/v1/yourtube/clip${n}.mp4`;
 
 beforeAll(async () => {
-  await startServer({ RAZORPAY_WEBHOOK_SECRET: WEBHOOK_SECRET });
+  await startServer({ RAZORPAY_WEBHOOK_SECRET: WEBHOOK_SECRET, MAIL_CAPTURE_DIR: MAIL_DIR });
   const db = adminDb();
   await Promise.all(
     [1, 2, 3, 4].map((n) =>
@@ -184,5 +211,55 @@ describe.skipIf(!hasRazorpay)("payments (Razorpay test mode)", () => {
     await verify(u, String(gold.body.orderId), fakePaymentId());
     await webhook(String(bronze.body.orderId), fakePaymentId(), 1000);
     expect((await adminDb().doc(`users/${u.uid}`).get()).get("plan")).toBe("gold");
+  });
+
+  it("emails one invoice with a PDF, whichever path fulfils first", async () => {
+    const u = await createUser("invoiced");
+    const { body } = await createOrder(u, { product: "silver" });
+    const orderId = String(body.orderId);
+    const paymentId = fakePaymentId();
+
+    const ok = await verify(u, orderId, paymentId);
+    expect(ok.body.emailStatus).toBe("pending");
+    await waitForEmailStatus(paymentId, "sent");
+    await webhook(orderId, paymentId, 5000);
+    await verify(u, orderId, paymentId);
+
+    const mails = mailsTo(u.email);
+    expect(mails).toHaveLength(1);
+    const [mail] = mails;
+    expect(mail.subject).toBe(`[TEST] Your YourTube invoice ${ok.body.invoiceNumber}`);
+    for (const s of [String(ok.body.invoiceNumber), "Silver plan", "₹50", orderId, paymentId, "TEST MODE", "10 minutes per video", "IST"]) {
+      expect(mail.html).toContain(s);
+    }
+    expect(mail.attachments).toHaveLength(1);
+    const pdf = readFileSync(path.join(MAIL_DIR, mail.attachments[0]));
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect((await adminDb().doc(`payments/${paymentId}`).get()).get("emailStatus")).toBe("sent");
+  });
+
+  it("a failed email doesn't fail the payment; Resend works for the owner only", async () => {
+    const u = await createUser("noemail");
+    const other = await createUser("snoop");
+    // No email on the profile makes the send fail.
+    await adminDb().doc(`users/${u.uid}`).update({ email: "" });
+    const { body } = await createOrder(u, { product: "bronze" });
+    const paymentId = fakePaymentId();
+    const ok = await verify(u, String(body.orderId), paymentId);
+    expect(ok.status).toBe(200);
+    await waitForEmailStatus(paymentId, "failed");
+    expect((await adminDb().doc(`users/${u.uid}`).get()).get("plan")).toBe("bronze");
+
+    const resend = (who: TestUser) =>
+      api("/api/payments/resend-invoice", { method: "POST", user: who, body: { paymentId } });
+    expect((await resend(u)).status).toBe(502);
+    expect((await resend(other)).status).toBe(404);
+
+    await adminDb().doc(`users/${u.uid}`).update({ email: u.email });
+    const r = await resend(u);
+    expect(r.status).toBe(200);
+    expect(r.body.emailStatus).toBe("sent");
+    expect(mailsTo(u.email)).toHaveLength(1);
+    expect((await resend(u)).body.reason).toBe("ALREADY_SENT");
   });
 });

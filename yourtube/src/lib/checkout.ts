@@ -61,6 +61,7 @@ export interface PurchaseResult {
   product: ProductId;
   invoiceNumber: string;
   alreadyProcessed: boolean;
+  emailStatus: "pending" | "sent" | "failed";
 }
 
 /**

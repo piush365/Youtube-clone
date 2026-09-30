@@ -1,4 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { waitUntil } from "@vercel/functions";
+import { sendInvoiceEmail } from "@/lib/server/invoice";
 import { FulfilmentError, fulfilPayment } from "@/lib/server/payments";
 import { verifyWebhookSignature } from "@/lib/server/razorpay";
 
@@ -47,6 +49,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       amountPaid: payment.amount,
       source: "webhook",
     });
+    // Razorpay expects a reply within ~5 s; email in the background.
+    if (created) waitUntil(sendInvoiceEmail(payment.id));
     return res.status(200).json({ ok: true, alreadyProcessed: !created });
   } catch (err) {
     if (err instanceof FulfilmentError) {

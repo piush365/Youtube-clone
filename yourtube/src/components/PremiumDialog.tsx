@@ -29,7 +29,7 @@ export default function PremiumDialog({ open, onOpenChange, reason, onPurchased 
     try {
       const result = await purchase("premium");
       await refreshUser();
-      toast.success(`You're Premium! Receipt ${result.invoiceNumber}`);
+      toast.success(`You're Premium! Invoice ${result.invoiceNumber} is being emailed to you.`);
       onOpenChange(false);
       onPurchased?.();
     } catch (err) {
