@@ -1,22 +1,16 @@
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { toDate, type FirestoreDate, type Video } from "@/lib/types";
 
 interface RelatedVideosProps {
-  videos: Array<{
-    id: string;
-    videotitle: string;
-    videochanel: string;
-    videoUrl: string;
-    views: number;
-    createdAt: any;
-  }>;
+  videos: Video[];
 }
 
 export default function RelatedVideos({ videos }: RelatedVideosProps) {
-  const formatDate = (createdAt: any) =>
-    createdAt?.seconds
-      ? formatDistanceToNow(new Date(createdAt.seconds * 1000))
-      : formatDistanceToNow(new Date(createdAt));
+  const formatDate = (createdAt: FirestoreDate) => {
+    const d = toDate(createdAt);
+    return isNaN(d.getTime()) ? "" : formatDistanceToNow(d);
+  };
 
   return (
     <div className="space-y-2">

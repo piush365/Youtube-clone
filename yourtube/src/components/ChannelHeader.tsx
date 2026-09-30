@@ -1,8 +1,14 @@
 import React, { useState } from "react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
+import type { AppUser, Channel } from "@/lib/types";
 
-const ChannelHeader = ({ channel, user }: any) => {
+interface ChannelHeaderProps {
+  channel: Channel;
+  user: AppUser | null;
+}
+
+const ChannelHeader = ({ channel, user }: ChannelHeaderProps) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   return (

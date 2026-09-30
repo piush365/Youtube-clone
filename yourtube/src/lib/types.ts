@@ -13,6 +13,13 @@ export interface Video {
   createdAt?: FirestoreDate;
 }
 
+/** A row in History / Liked / Watch later: the list record plus its video. */
+export interface VideoListEntry {
+  id: string;
+  videoid: Video;
+  createdAt: string;
+}
+
 export type FirestoreDate = { seconds: number; nanoseconds?: number } | string | Date | null | undefined;
 
 export function toDate(value: FirestoreDate): Date {

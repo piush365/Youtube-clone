@@ -2,8 +2,10 @@
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback } from "./ui/avatar";
+import { toDate, type Video } from "@/lib/types";
 
-export default function VideoCard({ video }: any) {
+export default function VideoCard({ video }: { video: Video }) {
+  const created = toDate(video.createdAt);
   return (
     <Link href={`/watch/${video?.id}`} className="group">
       <div className="space-y-3">
@@ -27,12 +29,7 @@ export default function VideoCard({ video }: any) {
             <p className="text-sm text-gray-600 mt-1">{video?.videochanel}</p>
             <p className="text-sm text-gray-600">
               {video?.views?.toLocaleString()} views •{" "}
-              {video?.createdAt?.seconds
-                ? formatDistanceToNow(
-                    new Date(video.createdAt.seconds * 1000)
-                  )
-                : formatDistanceToNow(new Date(video?.createdAt))}{" "}
-              ago
+              {isNaN(created.getTime()) ? "" : `${formatDistanceToNow(created)} ago`}
             </p>
           </div>
         </div>

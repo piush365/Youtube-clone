@@ -7,7 +7,7 @@ import { Label } from "./ui/label";
 import { Progress } from "./ui/progress";
 import { uploadVideo } from "@/lib/videoService";
 
-const VideoUploader = ({ channelId, channelName }: any) => {
+const VideoUploader = ({ channelId, channelName }: { channelId: string; channelName: string }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [videoFile, setVideoFile] = useState<File | null>(null);
