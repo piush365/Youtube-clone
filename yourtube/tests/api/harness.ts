@@ -85,6 +85,46 @@ export async function createUser(name: string, { otp = true } = {}): Promise<Tes
   return user;
 }
 
+/** Sign in again as an existing emulator user: a new auth_time, so OTP is needed again. */
+export async function signInAgain(user: TestUser): Promise<TestUser> {
+  await new Promise((r) => setTimeout(r, 1100)); // auth_time has 1 s resolution
+  const res = await fetch(
+    `http://${EMU_ENV.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: user.email, password: "password123", returnSecureToken: true }),
+    }
+  );
+  const data = (await res.json()) as { idToken: string };
+  const payload = JSON.parse(Buffer.from(data.idToken.split(".")[1], "base64url").toString()) as { auth_time: number };
+  return { ...user, token: data.idToken, authTime: payload.auth_time };
+}
+
+/** Firebase Phone Auth against the emulator: returns the phone user's ID token. */
+export async function phoneSignIn(phoneNumber: string): Promise<{ idToken: string; uid: string }> {
+  const base = `http://${EMU_ENV.FIREBASE_AUTH_EMULATOR_HOST}`;
+  const sent = (await (
+    await fetch(`${base}/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=fake`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phoneNumber, recaptchaToken: "ignored-by-emulator" }),
+    })
+  ).json()) as { sessionInfo: string };
+  const codes = (await (await fetch(`${base}/emulator/v1/projects/${PROJECT_ID}/verificationCodes`)).json()) as {
+    verificationCodes: { sessionInfo: string; code: string }[];
+  };
+  const code = codes.verificationCodes.find((c) => c.sessionInfo === sent.sessionInfo)!.code;
+  const signed = (await (
+    await fetch(`${base}/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=fake`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionInfo: sent.sessionInfo, code }),
+    })
+  ).json()) as { idToken: string; localId: string };
+  return { idToken: signed.idToken, uid: signed.localId };
+}
+
 export const markOtpVerified = (user: TestUser) =>
   adminDb().doc(`sessions/${user.uid}`).set({ authTime: user.authTime, verifiedAt: new Date() });
 

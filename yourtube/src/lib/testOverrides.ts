@@ -7,12 +7,16 @@ export const TEST_OVERRIDES_ENABLED = process.env.NEXT_PUBLIC_ENABLE_TEST_OVERRI
 export interface TestOverrides {
   region?: string;
   hour?: number;
+  /** Seconds; replaces the plan's watch limit so short clips can demo the lock. */
+  watchLimit?: number;
 }
 
 const STORAGE_KEY = "yourtube:test-overrides";
 
-export function parseOverrides(region: unknown, hour: unknown): TestOverrides {
+export function parseOverrides(region: unknown, hour: unknown, watchLimit?: unknown): TestOverrides {
   const out: TestOverrides = {};
+  const w = typeof watchLimit === "string" && watchLimit !== "" ? Number(watchLimit) : NaN;
+  if (Number.isInteger(w) && w >= 5 && w <= 3600) out.watchLimit = w;
   if (typeof region === "string" && /^[A-Za-z]{2}$/.test(region)) {
     out.region = region.toUpperCase();
   }
@@ -22,7 +26,7 @@ export function parseOverrides(region: unknown, hour: unknown): TestOverrides {
 }
 
 /**
- * Client only. Reads ?testRegion/&testHour from the URL (and remembers them for
+ * Client only. Reads ?testRegion, &testHour and &testWatchLimit from the URL (and remembers them for
  * the tab so they survive navigation). ?testReset=1 clears them.
  */
 export function getClientOverrides(): TestOverrides {
@@ -33,15 +37,15 @@ export function getClientOverrides(): TestOverrides {
       sessionStorage.removeItem(STORAGE_KEY);
       return {};
     }
-    if (params.has("testRegion") || params.has("testHour")) {
-      const fromUrl = parseOverrides(params.get("testRegion"), params.get("testHour"));
+    if (params.has("testRegion") || params.has("testHour") || params.has("testWatchLimit")) {
+      const fromUrl = parseOverrides(params.get("testRegion"), params.get("testHour"), params.get("testWatchLimit"));
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(fromUrl));
       return fromUrl;
     }
     const stored = sessionStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored) as { region?: unknown; hour?: unknown };
-      return parseOverrides(parsed.region, parsed.hour);
+      const parsed = JSON.parse(stored) as { region?: unknown; hour?: unknown; watchLimit?: unknown };
+      return parseOverrides(parsed.region, parsed.hour, parsed.watchLimit === undefined ? undefined : String(parsed.watchLimit));
     }
   } catch {
     // sessionStorage unavailable: fall through to no overrides

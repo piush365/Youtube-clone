@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import type { PlanConfig } from "@/lib/plans";
 import { formatClock } from "@/lib/watchLimit";
 
-export function WatchLimitOverlay({ plan }: { plan: PlanConfig }) {
+export function WatchLimitOverlay({ plan, testLimitSec }: { plan: PlanConfig; testLimitSec?: number }) {
   const minutes = (plan.watchLimitSec ?? 0) / 60;
   return (
     <div
@@ -17,6 +17,9 @@ export function WatchLimitOverlay({ plan }: { plan: PlanConfig }) {
       <p className="text-lg font-semibold max-w-md">
         Your {plan.name} plan allows {minutes} minutes per video. Upgrade to keep watching.
       </p>
+      {testLimitSec !== undefined && (
+        <p className="text-xs font-semibold text-fuchsia-300">Test override: limit shortened to {testLimitSec}s</p>
+      )}
       <Button asChild className="bg-amber-500 hover:bg-amber-600 text-black">
         <Link href="/plans">See plans</Link>
       </Button>
