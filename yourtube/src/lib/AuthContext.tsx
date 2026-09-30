@@ -1,6 +1,7 @@
 import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut, type User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { provider, auth, db } from "./firebase";
 import { getOrCreateUser, getOwnProfile } from "./userService";
 import type { AppUser } from "./types";
@@ -21,6 +22,19 @@ interface UserContextValue {
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
+
+/** Tell the user why Google sign-in failed instead of failing silently. */
+function reportSignInError(err: unknown) {
+  console.error("Google sign-in failed:", err);
+  const code = (err as { code?: string })?.code ?? "";
+  if (code === "auth/unauthorized-domain") {
+    toast.error(`Sign-in isn't enabled for ${window.location.hostname} yet. Add it under Firebase → Authentication → Settings → Authorized domains.`, { duration: 15_000 });
+  } else if (code === "auth/network-request-failed") {
+    toast.error("Couldn't reach Google sign-in. Check your connection or disable blocking extensions.");
+  } else if (code !== "auth/redirect-cancelled-by-user" && code !== "auth/popup-closed-by-user") {
+    toast.error("Google sign-in failed. Please try again.");
+  }
+}
 
 /** Has the server recorded an OTP for this exact Google sign-in? */
 async function otpVerifiedFor(firebaseUser: User): Promise<boolean> {
@@ -55,7 +69,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signInWithRedirect(auth, provider);
     } catch (error) {
-      console.error(error);
+      reportSignInError(error);
     }
   }, []);
 
@@ -79,7 +93,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Surface redirect errors (e.g. unauthorized domain); onAuthStateChanged
     // handles the successful case.
-    getRedirectResult(auth).catch((err) => console.error("Google sign-in failed:", err));
+    getRedirectResult(auth).catch(reportSignInError);
 
     return onAuthStateChanged(auth, async (firebaseUser) => {
       try {
