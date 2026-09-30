@@ -2,7 +2,7 @@
 
 A YouTube-style video app built with **Next.js 15 (Pages Router), React 19, TypeScript, Tailwind v4 and shadcn/ui**, backed by **Firebase** (Auth + Firestore), **Cloudinary** (video storage), **Razorpay** (test-mode payments) and deployed on **Vercel**.
 
-**Live:** https://yourtube-nu.vercel.app
+**Live:** https://yourtube-nu.vercel.app · **Detailed guide:** [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md)
 
 ## Features
 
