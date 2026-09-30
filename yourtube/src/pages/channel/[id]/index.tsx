@@ -7,6 +7,9 @@ import { getVideosByUploader } from "@/lib/videoService";
 import { getChannelById } from "@/lib/userService";
 import type { Channel, Video } from "@/lib/types";
 import { useRouter } from "next/router";
+import Link from "next/link";
+import { Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import React, { useEffect, useState } from "react";
 
 const ChannelPage = () => {
@@ -55,6 +58,15 @@ const ChannelPage = () => {
       <div className="max-w-full mx-auto">
         <ChannelHeader channel={shown} user={user} />
         <Channeltabs />
+        {isOwner && (
+          <div className="px-4 pb-4">
+            <Button asChild variant="secondary" size="sm">
+              <Link href="/downloads">
+                <Download className="w-4 h-4" /> Your downloads
+              </Link>
+            </Button>
+          </div>
+        )}
         {isOwner && (
           <div className="px-4 pb-8">
             <VideoUploader channelId={user.uid} channelName={shown.channelname} />

@@ -45,6 +45,11 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Per-IST-day download counter, bumped transactionally by /api/downloads.
+      match /downloadDays/{day} {
+        allow read, write: if false;
+      }
+
       match /friends/{friendUid} {
         allow read: if isUser(uid);
         allow write: if false;
@@ -103,6 +108,10 @@ service cloud.firestore {
     match /payments/{paymentId} {
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
       allow write: if false;
+    }
+
+    match /orders/{orderId} {
+      allow read, write: if false;
     }
 
     match /otps/{uid} {

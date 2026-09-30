@@ -6,7 +6,7 @@ import {
 } from "firebase/auth";
 import { useState, useEffect, useContext, createContext } from "react";
 import { provider, auth } from "./firebase";
-import { getOrCreateUser } from "./userService";
+import { getOrCreateUser, getOwnProfile } from "./userService";
 
 const UserContext = createContext();
 
@@ -26,6 +26,14 @@ export const UserProvider = ({ children }) => {
     } catch (error) {
       console.error("Error during sign out:", error);
     }
+  };
+
+  // Re-read the private profile (plan, isPremium) after a server-side change.
+  const refreshUser = async () => {
+    const current = auth.currentUser;
+    if (!current) return;
+    const profile = await getOwnProfile(current.uid);
+    if (profile) login(profile);
   };
 
   const handlegooglesignin = async () => {
@@ -71,7 +79,7 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, login, logout, handlegooglesignin }}>
+    <UserContext.Provider value={{ user, login, logout, handlegooglesignin, refreshUser }}>
       {children}
     </UserContext.Provider>
   );

@@ -1,4 +1,4 @@
-import { Bell, Menu, Mic, Search, User, VideoIcon } from "lucide-react";
+import { Bell, Crown, Menu, Mic, Search, User, VideoIcon } from "lucide-react";
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import Link from "next/link";
@@ -80,6 +80,15 @@ const Header = () => {
       <div className="flex items-center gap-2">
         {user ? (
           <>
+            {user.isPremium && (
+              <Link
+                href="/downloads"
+                className="hidden sm:inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400"
+                data-testid="premium-badge"
+              >
+                <Crown className="w-3.5 h-3.5" /> Premium
+              </Link>
+            )}
             <Button variant="ghost" size="icon">
               <VideoIcon className="w-6 h-6" />
             </Button>
@@ -123,6 +132,9 @@ const Header = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/watch-later">Watch later</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/downloads">Downloads</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>Sign out</DropdownMenuItem>
