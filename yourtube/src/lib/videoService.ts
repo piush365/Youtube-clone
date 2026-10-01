@@ -33,7 +33,7 @@ export const getVideosByUploader = async (uid: string): Promise<Video[]> => {
 const uploadToCloudinary = (
   file: File,
   onProgress: (progress: number) => void
-): Promise<string> => {
+): Promise<{ url: string; duration?: number }> => {
   return new Promise((resolve, reject) => {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
@@ -52,7 +52,7 @@ const uploadToCloudinary = (
     xhr.addEventListener("load", () => {
       if (xhr.status === 200) {
         const res = JSON.parse(xhr.responseText);
-        resolve(res.secure_url);
+        resolve({ url: res.secure_url, duration: typeof res.duration === "number" ? res.duration : undefined });
       } else {
         reject(new Error("Cloudinary upload failed"));
       }
@@ -68,13 +68,14 @@ export const uploadVideo = async (
   metadata: { videotitle: string; videochanel: string; uploader: string },
   onProgress: (progress: number) => void
 ): Promise<void> => {
-  const videoUrl = await uploadToCloudinary(file, onProgress);
+  const { url: videoUrl, duration } = await uploadToCloudinary(file, onProgress);
   await addDoc(collection(db, "videos"), {
     videotitle: metadata.videotitle,
     filename: file.name,
     filetype: file.type,
     videoUrl,
     filesize: `${Math.round(file.size / (1024 * 1024))}MB`,
+    ...(duration !== undefined && { duration }),
     videochanel: metadata.videochanel,
     likes: 0,
     views: 0,

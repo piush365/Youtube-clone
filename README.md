@@ -99,6 +99,10 @@ npm run test:smoke    # Playwright smoke test (SMOKE_URL=https://… to run agai
 npm run lint && npm run typecheck
 ```
 
+### Demo videos
+
+`npm run seed:samples` (in `yourtube/`) adds the 5 demo videos on the **Siddhi Bolaikar** channel (`/channel/sample-siddhi-bolaikar`): Big Buck Bunny and the Sintel trailer (Blender Foundation, CC-BY) plus three short Cloudinary demo clips. The files are already on Cloudinary; the script only writes Firestore, uses fixed ids, and keeps views/likes when re-run.
+
 ### Test payments (Razorpay test mode, no real money)
 
 - **Card:** `4111 1111 1111 1111`, any future expiry, any CVV (use OTP `1111` if asked)
