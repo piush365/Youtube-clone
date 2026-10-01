@@ -6,8 +6,10 @@ export interface Video {
   filename?: string;
   filetype?: string;
   filesize?: string;
-  /** Seconds, from Cloudinary's upload response. Older videos may lack it. */
+  /** Seconds. */
   duration?: number;
+  /** Still image for lists and the player before playback. */
+  poster?: string;
   likes?: number;
   views?: number;
   uploader?: string;
