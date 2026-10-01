@@ -37,8 +37,8 @@ const ChannelPage = () => {
   }, [id]);
 
   const isOwner = !!user && user.uid === id;
-  // The public channel card is created on first OTP-verified login; until
-  // then the owner still sees their own channel from their profile.
+  // Accounts from before the channel card was written at sign-up may not have
+  // one yet; the owner still sees their own channel from their profile.
   const shown: Channel | null =
     channel ??
     (isOwner && user.channelname

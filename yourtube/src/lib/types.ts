@@ -39,7 +39,6 @@ export interface AppUser {
   channelname: string;
   description: string;
   image: string;
-  phone?: string;
   plan?: PlanId;
   isPremium?: boolean;
   joinedon?: FirestoreDate;
