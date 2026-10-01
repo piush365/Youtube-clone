@@ -6,6 +6,10 @@ export interface Video {
   filename?: string;
   filetype?: string;
   filesize?: string;
+  /** Seconds. */
+  duration?: number;
+  /** Still image for lists and the player before playback. */
+  poster?: string;
   likes?: number;
   views?: number;
   uploader?: string;
