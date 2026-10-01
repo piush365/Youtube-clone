@@ -16,7 +16,6 @@ const file = (name: string) => ({
 });
 
 export const SAMPLE_VIDEOS: Video[] = [
-  { id: "sample-big-buck-bunny", videotitle: "Big Buck Bunny (Blender open movie, CC-BY)", ...file("big-buck-bunny"), duration: 596, ...SIDDHI, createdAt: "2026-10-01T05:00:00Z" },
   { id: "sample-sintel-trailer", videotitle: "Sintel - Official Trailer (Blender, CC-BY)", ...file("sintel-trailer"), duration: 52, ...SIDDHI, createdAt: "2026-10-01T05:01:00Z" },
   { id: "sample-elephants", videotitle: "Elephants in the Wild", ...file("elephants"), duration: 53, ...SIDDHI, createdAt: "2026-10-01T05:02:00Z" },
   { id: "sample-sea-turtle", videotitle: "Sea Turtle Swimming", ...file("sea-turtle"), duration: 15, ...SIDDHI, createdAt: "2026-10-01T05:03:00Z" },

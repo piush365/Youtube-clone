@@ -101,7 +101,7 @@ npm run lint && npm run typecheck
 
 ### Demo videos
 
-The video catalogue is hardcoded in [`yourtube/src/lib/sampleVideos.ts`](yourtube/src/lib/sampleVideos.ts) and the files are served from `yourtube/public/videos/` (no Cloudinary, no uploads). Five are on the **Siddhi Bolaikar** channel (`/channel/sample-siddhi-bolaikar`): Big Buck Bunny and the Sintel trailer (Blender Foundation, CC-BY) plus three short clips. Firestore only holds each video's views/likes, which likes and comments need; `npm run seed:samples` (in `yourtube/`) syncs it with the list and keeps the counts.
+The video catalogue is hardcoded in [`yourtube/src/lib/sampleVideos.ts`](yourtube/src/lib/sampleVideos.ts) and the files are served from `yourtube/public/videos/` (no Cloudinary, no uploads). Four are on the **Siddhi Bolaikar** channel (`/channel/sample-siddhi-bolaikar`): the Sintel trailer (Blender Foundation, CC-BY) plus three short clips. Firestore only holds each video's views/likes, which likes and comments need; `npm run seed:samples` (in `yourtube/`) syncs it with the list and keeps the counts.
 
 ### Test payments (Razorpay test mode, no real money)
 
